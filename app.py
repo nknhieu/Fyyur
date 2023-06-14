@@ -113,48 +113,43 @@ def index():
 def venues():
   # TODO: replace with real venues data.
   #       num_upcoming_shows should be aggregated based on number of upcoming shows per venue.
-  venue_areas = db.session.query(Venue.city,Venue.state).group_by(Venue.state,
-    Venue.city).all()
-  # print(venue_areas)
-  data = []
-  for area in venue_areas:
-    venues = db.session.query(Venue.id,Venue.name,
-      Venue.upcoming_shows_count).filter(Venue.city==area[0],Venue.state==area[1]).all()
-    data.append({
-        "city": area[0],
-        "state": area[1],
+ data_venues = Venue.query.all()
+ data = []
+ for venue in data_venues:
+    area_data = {
+        "city": venue.city,
+        "state": venue.state,
         "venues": []
-    })
-    for venue in venues:
-      data[-1]["venues"].append({
-              "id": venue[0],
-              "name": venue[1],
-              "num_upcoming_shows":venue[2]
-      })
-      print(venues)
-  return render_template('pages/venues.html', areas=data);
-
+    }
+    venue_data = {
+        "id": venue.id,
+        "name": venue.name,
+        "num_upcoming_shows": venue.upcoming_shows_count
+    }
+    area_data["venues"].append(venue_data)
+    data.append(area_data)
+ return render_template('pages/venues.html', areas=data)
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
   # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
   # seach for Hop should return "The Musical Hop".
   # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
-  searchTerm=request.form['search_term']
-  
-  results = Venue.query.filter(Venue.name.ilike(f'%{searchTerm}%')).all()
-  print(results)
-  response={
-    "count": len(results),
-    "data":[]
-  }
-  for venue in results:
-     response["data"].append({
-        "id": venue.id,
-        "name": venue.name,
-        "num_upcoming_shows": venue.upcoming_shows_count
-     })
-  return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
+    search_venues=request.form['search_term']
+    result_venues = Venue.query.filter(Venue.name.ilike(f'%{search_venues}%')).all()
+    # print(result_venues)
+    data_search = []
+    for venue in result_venues:
+        data_search.append({
+            "id": venue.id,
+            "name": venue.name,
+            "num_upcoming_shows": venue.upcoming_shows_count
+        })
 
+    response = {
+        "count": len(result_venues),
+        "data": data_search
+    }
+    return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
 @app.route('/venues/<int:venue_id>')
 def show_venue(venue_id):
   # shows the venue page with the given venue_id
@@ -275,18 +270,20 @@ def search_artists():
   # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
   # seach for "A" should return "Guns N Petals", "Matt Quevado", and "The Wild Sax Band".
   # search for "band" should return "The Wild Sax Band".
-  searchArtist=request.form['search_term']
-  results = Artist.query.filter(Artist.name.ilike(f'%{searchArtist}%')).all()
-  response={
-    "count": len(results),
-    "data": []
-  }
-  for artist in results:
-    response['data'].append({
-      "id": artist.id,
-      "name": artist.name,
-      "num_upcoming_shows": artist.upcoming_shows_count,
-      })
+  search_Artist=request.form['search_term']
+  result_artists = Artist.query.filter(Artist.name.ilike(f'%{search_Artist}%')).all()
+  data_search = []
+  for artist in result_artists:
+        data_search.append({
+            "id": artist.id,
+            "name": artist.name,
+            "num_upcoming_shows": artist.upcoming_shows_count
+        })
+
+  response = {
+        "count": len(result_artists),
+        "data": data_search
+    }
   return render_template('pages/search_artists.html', results=response, search_term=request.form.get('search_term', ''))
 
 @app.route('/artists/<int:artist_id>')
@@ -305,9 +302,7 @@ def show_artist(artist_id):
       "venue_image_link": show.venue.image_link,
       "start_time": str(show.start_time)
     }
-    # if(show.upcoming):
-    #   upcoming_shows.append(show_info)
-    # else:
+    
     past_shows.append(show_info)
 
   data={
