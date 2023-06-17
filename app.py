@@ -15,77 +15,16 @@ from forms import *
 from flask_migrate import Migrate
 from datetime import datetime
 import datetime
+from models import app, db, Venue, Artist, Show
+from forms import VenueForm
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
 
-app = Flask(__name__)
+
 moment = Moment(app)
 app.config.from_object('config')
-db = SQLAlchemy(app)
-
-# TODO: connect to a local postgresql database
-migration = Migrate(app, db)
-#----------------------------------------------------------------------------#
-# Models.
-#----------------------------------------------------------------------------#
-
-class Venue(db.Model):
-    __tablename__ = 'Venue'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(120))
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    address = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-
-    # TODO: implement any missing fields, as a database migration using Flask-Migrate
-    genres = db.Column(db.String(120),nullable=False)
-    website_link = db.Column(db.String(120))
-    seeking_talent = db.Column(db.Boolean,default=False)
-    seeking_description = db.Column(db.Text)
-    upcoming_shows_count = db.Column(db.Integer, default=0)
-    past_shows_count = db.Column(db.Integer, default=0)
-    shows = db.relationship('Show',backref='venue',lazy=True,
-                        cascade="save-update, merge, delete")
-    # def __repr__(self):
-    #    return f'Venue {self.id}; City: {self.name}'
-
-class Artist(db.Model):
-    __tablename__ = 'Artist'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(120))
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    genres = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-
-    # TODO: implement any missing fields, as a database migration using Flask-Migrate
-    website_link = db.Column(db.String(120))
-    seeking_venue = db.Column(db.Boolean,default=False)
-    seeking_description = db.Column(db.Text)
-    upcoming_shows_count = db.Column(db.Integer, default=0)
-    past_shows_count = db.Column(db.Integer, default=0)
-    shows = db.relationship('Show',backref='artist',lazy=True,
-                        cascade="save-update, merge, delete")
-# TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
-class Show(db.Model):
-    __tablename__ = 'shows'
-    id = db.Column(db.Integer, primary_key=True)
-    start_time = db.Column(db.DateTime, nullable=False, default=datetime.datetime.now())
-    artist_id = db.Column(db.Integer,db.ForeignKey('Artist.id')
-                          ,nullable=False)
-    venue_id = db.Column(db.Integer,db.ForeignKey('Venue.id')
-                          ,nullable=False)
-#----------------------------------------------------------------------------#
-# Filters.
-#----------------------------------------------------------------------------#
+db.init_app(app)
 
 def format_datetime(value, format='medium'):
   date = dateutil.parser.parse(value)
@@ -158,7 +97,8 @@ def show_venue(venue_id):
   # print(venue)
   past_shows = []
   upcoming_shows = []
-  shows = venue.shows
+  # shows = venue.shows
+  shows = db.session.query(Show).join(Artist).filter(Show.venue_id == venue.id).all()
   for show in shows:
     show_info ={
       "artist_id": show.artist_id,
@@ -186,7 +126,7 @@ def show_venue(venue_id):
     "past_shows_count": len(past_shows),
     "upcoming_shows_count": len(upcoming_shows)
   }
-  # data = list(filter(lambda d: d['id'] == venue_id, [data1, data2, data3]))[0]
+
   return render_template('pages/show_venue.html', venue=data)
 
 #  Create Venue
@@ -202,9 +142,7 @@ def create_venue_submission():
   # TODO: insert form data as a new Venue record in the db, instead
   # TODO: modify data to be the data object returned from db insertion
     form=request.form
-    # print(form['genres'])
-    # print(type(form['seeking_talent']))
-    # print(form['seeking_talent'])
+    
     new_venue = Venue(
     name = form['name'],
     city = form['city'],
@@ -233,7 +171,7 @@ def create_venue_submission():
     finally:
        db.session.close()
     return redirect(url_for('index'))
-# render_template('pages/home.html')
+
 
 @app.route('/venues/<venue_id>', methods=['DELETE'])
 def delete_venue(venue_id):
